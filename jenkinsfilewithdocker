@@ -1,0 +1,62 @@
+pipeline {
+    agent any
+
+    tools {
+        maven 'maven3.9.16' // This should match the Maven name in Jenkins Global Tool Configuration
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/saidevops178-org-1/spring-boot-mongo-docker-kkfunda.git'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+
+        stage('SonarQube') {
+            steps {
+                withSonarQubeEnv('sonar') {
+                    sh '''
+                        mvn clean verify \
+                          org.sonarsource.scanner.maven:sonar-maven-plugin:5.2.0.4988:sonar
+                    '''
+                }
+            }
+        }
+
+        stage('Build & Tag Docker Image') {
+            steps {
+                script {
+                    withDockerRegistry(
+                        credentialsId: 'f40c2e5c-7b93-4285-a76b-0d408271afab',
+                        url: 'https://index.docker.io/v1/'
+                    ) {
+                        sh '''
+                            docker build -t saidockerrepo/mongospring:1.0 .
+                        '''
+                    }
+                }
+            }
+        }
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    withDockerRegistry(
+                        credentialsId: 'f40c2e5c-7b93-4285-a76b-0d408271afab',
+                        url: 'https://index.docker.io/v1/'
+                        ) {
+                        sh '''
+                        docker push saidockerrepo/mongospring:1.0
+                        '''
+                    }
+                }
+            }
+        }
+    }
+}
